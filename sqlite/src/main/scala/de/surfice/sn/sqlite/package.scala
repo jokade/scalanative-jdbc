@@ -117,4 +117,5 @@ package object sqlite {
     val BLOB     = 4
     val NULL     = 5
   }
+
 }

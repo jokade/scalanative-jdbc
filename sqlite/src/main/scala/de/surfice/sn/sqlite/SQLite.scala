@@ -22,6 +22,9 @@ object SQLite {
   type Callback = CFunctionPtr4[Ptr[Byte],CInt,Ptr[CString],Ptr[CString],CInt]
   type ResultHandler = (CInt)=>CInt
   type PreparedStatementPtr = Ptr[Byte]
+  type Destructor = CFunctionPtr1[Ptr[Byte],Unit]
+  val SQLITE_STATIC = 0.cast[Destructor]
+  val SQLITE_TRANSIENT = (-1).cast[Destructor]
 
   @extern
   object API {
@@ -44,6 +47,10 @@ object SQLite {
     def sqlite3_column_int64(stmt: PreparedStatementPtr, col: CInt): CLong = extern
     def sqlite3_column_double(stmt: PreparedStatementPtr, col: CInt): CDouble = extern
     def sqlite3_column_text(stmt: PreparedStatementPtr, col: CInt): CString = extern
+    def sqlite3_bind_int(stmt: PreparedStatementPtr, idx: CInt, value: CInt): ResultCode = extern
+    def sqlite3_bind_int64(stmt: PreparedStatementPtr, idx: CInt, value: CLong): ResultCode = extern
+    def sqlite3_bind_double(stmt: PreparedStatementPtr, idx: CInt, value: CDouble): ResultCode = extern
+    def sqlite3_bind_text(stmt: PreparedStatementPtr, idx: CInt, value: CString, size: CInt, destructor: Destructor): ResultCode = extern
   }
 
 

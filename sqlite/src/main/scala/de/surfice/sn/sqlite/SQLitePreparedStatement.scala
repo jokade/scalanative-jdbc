@@ -6,7 +6,7 @@
 package de.surfice.sn.sqlite
 
 import scalanative.native._
-import de.surfice.sn.sqlite.SQLite.{API,PreparedStatementPtr}
+import de.surfice.sn.sqlite.SQLite.{API, Destructor, PreparedStatementPtr}
 
 final class SQLitePreparedStatement private() {
   @inline def step(): ResultCode = API.sqlite3_step(this.cast[PreparedStatementPtr])
@@ -17,6 +17,11 @@ final class SQLitePreparedStatement private() {
   @inline def column_int64(col: CInt): CLong = API.sqlite3_column_int64(this.cast[PreparedStatementPtr],col)
   @inline def column_double(col: CInt): CDouble = API.sqlite3_column_double(this.cast[PreparedStatementPtr],col)
   @inline def column_text(col: CInt): CString = API.sqlite3_column_text(this.cast[PreparedStatementPtr],col)
+  @inline def bind_int(col: CInt, value: CInt): ResultCode = API.sqlite3_bind_int(this.cast[PreparedStatementPtr],col,value)
+  @inline def bind_int64(col: CInt, value: CLong): ResultCode = API.sqlite3_bind_int64(this.cast[PreparedStatementPtr],col,value)
+  @inline def bind_double(col: CInt, value: CDouble): ResultCode = API.sqlite3_bind_double(this.cast[PreparedStatementPtr],col,value)
+  @inline def bind_text(col: CInt, value: CString, size: CInt, destructor: Destructor): ResultCode =
+    API.sqlite3_bind_text(this.cast[PreparedStatementPtr],col,value,size,destructor)
   /**
    * Calls sqlite3_finalize()
    */
@@ -36,9 +41,11 @@ object SQLitePreparedStatement {
         case rc @ (ResultCode.DONE | ResultCode.ROW) =>
           rc
         case rc =>
-          SQLite.handleError(dbHandle(stmt),rc)
+          SQLite.handleError(dbHandle,rc)
       }
     }
+
+    def dbHandle: SQLite = API.sqlite3_db_handle(stmt.cast[PreparedStatementPtr]).cast[SQLite]
 
     /**
      * Returns the name of the specified column (starting at 0).
@@ -54,8 +61,12 @@ object SQLitePreparedStatement {
       case null =>  throw SQLiteException(s"invalid column index or: $col",ResultCode.LIB_ERROR)
       case text => fromCString(text)
     }
+
+    def bind_string(col: Int, value: String): ResultCode = Zone{ implicit z =>
+      SQLite.handleError(dbHandle, API.sqlite3_bind_text(stmt.cast[PreparedStatementPtr],col,toCString(value),-1,SQLite.SQLITE_STATIC))
+    }
   }
 
-  private def dbHandle(stmt: SQLitePreparedStatement): SQLite =
-    API.sqlite3_db_handle(stmt.cast[PreparedStatementPtr]).cast[SQLite]
+//  private def dbHandle(stmt: SQLitePreparedStatement): SQLite =
+//    API.sqlite3_db_handle(stmt.cast[PreparedStatementPtr]).cast[SQLite]
 }

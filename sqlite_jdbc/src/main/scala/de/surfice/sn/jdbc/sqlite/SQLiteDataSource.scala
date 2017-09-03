@@ -17,5 +17,6 @@ class SQLiteDataSource(url: String) extends AbstractDataSource {
 }
 
 object SQLiteDataSource {
+  def apply(): SQLiteDataSource = new SQLiteDataSource(":memory:")
   def apply(url: String): SQLiteDataSource = new SQLiteDataSource(url)
 }

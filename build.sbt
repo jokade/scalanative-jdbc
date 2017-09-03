@@ -71,7 +71,7 @@ lazy val sqlite = project
   )
 
 lazy val sqlite_jdbc = project
-  .dependsOn(api,sqlite)
+  .dependsOn(api % "compile->compile;test->test",sqlite)
   .enablePlugins(ScalaNativePlugin)
   .settings(commonSettings++nativeSettings++loggingSettings:_*)
   .settings(

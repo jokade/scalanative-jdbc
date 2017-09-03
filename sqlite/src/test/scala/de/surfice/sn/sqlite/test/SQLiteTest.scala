@@ -47,8 +47,22 @@ object SQLiteTest extends TestSuite {
         stmt.column_string(1) ==> "string"
         stmt.column_double(2) ==> 1234.56789
 
-        stmt.step() ==> ResultCode.DONE
+        stmt.execute() ==> ResultCode.DONE
         stmt.close() ==> ResultCode.OK
+
+        val stmt2 = db.prepareStatement("insert into test(string,double) values(?,?)")
+        stmt2.bind_string(1,"äöüß")
+        stmt2.bind_double(2,-9876.54321)
+        stmt2.execute() ==> ResultCode.DONE
+        stmt2.close() ==> ResultCode.OK
+
+        val stmt3 = db.prepareStatement("select * from test")
+        stmt3.execute() ==> ResultCode.ROW
+        stmt3.execute() ==> ResultCode.ROW
+        stmt3.column_int(0) ==> 2
+        stmt3.column_string(1) ==> "äöüß"
+        stmt3.column_double(2) ==> -9876.54321
+        stmt3.close() ==> ResultCode.OK
       }
     }
   }
