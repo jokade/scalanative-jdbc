@@ -9,14 +9,21 @@ import java.sql.{ResultSet, Statement}
 
 import de.surfice.sn.sqlite.SQLite
 
-class SQLiteStatement(sqlite: SQLite) extends Statement.AbstractStatement {
+trait SQLiteStatement extends Statement.AbstractStatement {
+  def sqlite: SQLite
+
   override def execute(sql: String): Boolean = handleException{
     sqlite.execute(sql)
     false
   }
 
   override def executeQuery(sql: String): ResultSet = handleException{
-    val stmt = new Stmt( sqlite.prepareStatement(sql) )
-    ResultSet.wrap(stmt)
+    new SQLiteStmtWrapper( sqlite.prepareStatement(sql) )
   }
+}
+
+object SQLiteStatement {
+  class Impl(val sqlite: SQLite) extends SQLiteStatement
+
+  def apply(sqlite: SQLite): SQLiteStatement = new Impl(sqlite)
 }

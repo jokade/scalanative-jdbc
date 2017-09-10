@@ -7,9 +7,9 @@ trait Statement {
 }
 
 object Statement {
-  abstract class AbstractStatement extends Statement {
+  trait AbstractStatement extends Statement {
     def close(): Unit = {}
-    def execute(sql: String): Boolean = ???
-    def executeQuery(sql: String): ResultSet = ???
+    def execute(sql: String): Boolean = !!!
+    def executeQuery(sql: String): ResultSet = !!!
   }
 }

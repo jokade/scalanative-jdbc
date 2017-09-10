@@ -1,10 +1,11 @@
 package java.sql.test
 
-import java.sql.{Connection, Date, Timestamp}
+import java.sql.{Connection, Date, ResultSet, Timestamp}
 import java.sql.test.JDBCTestSuite.TestData
 
 import utest._
 import utest.framework.Tree
+
 
 trait JDBCTestSuite extends TestSuite {
   import JDBCTestSuite.testData
@@ -22,31 +23,73 @@ trait JDBCTestSuite extends TestSuite {
   }
 
   val tests = TestSuite {
-    'read-{
-      val conn = initializedDB(testData)
-      val stmt = conn.createStatement()
-      val rs = stmt.executeQuery("select * from test")
-      val d1 = testData(0)
+    val conn = initializedDB(testData)
+    'statement- {
+      'select - {
+        val stmt = conn.createStatement()
+        val rs = stmt.executeQuery("select * from test")
+        checkTestData(rs,testData)
+
+        rs.next() ==> false
+        rs.close()
+        stmt.close()
+        conn.close()
+      }
+    }
+    'preparedStatement-{
+      'insert-{
+        val addData = Seq(
+          TestData(4,"A longer text with \n and \r\f äöüß",Double.MinValue,Float.MinValue,true,Long.MinValue,new Date(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis()))
+        )
+
+        val pstmt = conn.prepareStatement("INSERT INTO test VALUES (?,?,?,?,?,?,?,?)")
+        for(d <- addData) {
+          pstmt.setInt(1,d.id)
+          pstmt.setString(2,d.sval)
+          pstmt.setDouble(3,d.dval)
+          pstmt.setFloat(4,d.fval)
+          pstmt.setBoolean(5,d.bval)
+          pstmt.setLong(6,d.lval)
+          pstmt.setDate(7,d.dtval)
+          pstmt.setTimestamp(8,d.tsval)
+          pstmt.executeUpdate()
+        }
+        pstmt.close()
+
+        val stmt = conn.createStatement()
+        val rs = stmt.executeQuery("SELECT * FROM test ORDER BY id")
+        checkTestData(rs,testData++addData)
+        rs.next ==> false
+        rs.close()
+        stmt.close()
+        conn.close()
+      }
+    }
+  }
+
+  private def checkTestData(rs: ResultSet, data: Seq[TestData]): Unit = {
+    var i = 1
+    for (d <- data) {
+      println(s"check row $i")
       rs.next() ==> true
-      rs.getInt(0) ==> d1.id
-      rs.getString(1) ==> d1.sval
-      rs.getDouble(2) ==> d1.dval
-      rs.getFloat(3) ==> d1.fval
-      rs.getBoolean(4) ==> d1.bval
-      rs.getLong(5) ==> d1.lval
-      rs.getDate(6) ==> d1.dtval
-      rs.getTimestamp(6) ==> d1.tsval
-      println(d1.dtval)
-      rs.close()
-      rs.close()
-      rs.next() ==> false
+      rs.getInt(1) ==> d.id
+      rs.getString(2) ==> d.sval
+      rs.getDouble(3) ==> d.dval
+      rs.getFloat(4) ==> d.fval
+      rs.getBoolean(5) ==> d.bval
+      rs.getLong(6) ==> d.lval
+      rs.getDate(7) ==> d.dtval
+      rs.wasNull() ==> (d.dtval == null)
+      rs.getTimestamp(8) ==> d.tsval
+      rs.wasNull() ==> (d.tsval == null)
+      i += 1
     }
   }
 }
 
 object JDBCTestSuite {
   case class TestData(id: Int,
-                      sval: String,  // should be VARCHAR(20)
+                      sval: String,
                       dval: Double,
                       fval: Float,
                       bval: Boolean,
@@ -55,6 +98,8 @@ object JDBCTestSuite {
                       tsval: Timestamp)
 
   val testData = Seq(
-    TestData(1,"string",1234.56789,1.23456F,true,123456789,new Date(System.currentTimeMillis()),new Timestamp(System.currentTimeMillis()))
+    TestData(1,"string",1234.56789,1.23456F,true,123456789,new Date(System.currentTimeMillis()),new Timestamp(System.currentTimeMillis())),
+    TestData(2,"äöüß$\n\r\f #",Double.MaxValue,Float.MaxValue,false,Long.MaxValue,new Date(0),new Timestamp(0)),
+    TestData(3,null,Double.MinValue,Float.MinValue,false,Long.MinValue,null,null)
   )
 }

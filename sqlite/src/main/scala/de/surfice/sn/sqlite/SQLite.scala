@@ -36,6 +36,7 @@ object SQLite {
     def sqlite3_free(ptr: Ptr[Byte]): Unit = extern
     def sqlite3_prepare_v2(db: SQLitePtr, zSql: CString, nByte: CInt, stmt: Ptr[PreparedStatementPtr], pzTail: Ptr[CString]): ResultCode = extern
     def sqlite3_step(stmt: PreparedStatementPtr): ResultCode = extern
+    def sqlite3_reset(stmt: PreparedStatementPtr): ResultCode = extern
     def sqlite3_db_handle(stmt: PreparedStatementPtr): SQLitePtr = extern
     def sqlite3_finalize(stmt: PreparedStatementPtr): ResultCode = extern
     def sqlite3_errmsg(db: SQLitePtr): CString = extern
@@ -51,6 +52,7 @@ object SQLite {
     def sqlite3_bind_int64(stmt: PreparedStatementPtr, idx: CInt, value: CLong): ResultCode = extern
     def sqlite3_bind_double(stmt: PreparedStatementPtr, idx: CInt, value: CDouble): ResultCode = extern
     def sqlite3_bind_text(stmt: PreparedStatementPtr, idx: CInt, value: CString, size: CInt, destructor: Destructor): ResultCode = extern
+    def sqlite3_bind_null(stmt: PreparedStatementPtr, idx: CInt): ResultCode = extern
   }
 
 
@@ -82,7 +84,7 @@ object SQLite {
   def apply(): SQLite = apply(c":memory:")
 
   implicit final class RichSQLite(val db: SQLite) extends AnyVal {
-    def prepareStatement(sql: String): SQLitePreparedStatement = prepare(db,sql)
+    def prepareStatement(sql: String): SQLiteStmt = prepare(db,sql)
     def execute(sql: String): Unit = executeSql(db,sql)
   }
 
@@ -95,14 +97,14 @@ object SQLite {
 //  private val handleResultPtr = CFunctionPtr.fromFunction4(handleResult)
 
 
-  private def prepare(db: SQLite, sql: String): SQLitePreparedStatement = Zone{ implicit z =>
+  private def prepare(db: SQLite, sql: String): SQLiteStmt = Zone{ implicit z =>
     var zSql = toCString(sql)
     val stmt = stackalloc[PreparedStatementPtr]( sizeof[PreparedStatementPtr] )
     val pzTail = stackalloc[CString]( sizeof[CString] )
     handleError( db, API.sqlite3_prepare_v2(db.cast[SQLitePtr],zSql,-1,stmt,pzTail) )
     if(!(!pzTail) != 0)
       throw SQLiteException("cannot prepare multiple statements",ResultCode.LIB_MULTIPLE_STMTS)
-    (!stmt).cast[SQLitePreparedStatement]
+    (!stmt).cast[SQLiteStmt]
   }
 
   private def executeSql(db: SQLite, sql: String): Unit = Zone{ implicit z =>
@@ -111,7 +113,7 @@ object SQLite {
     val pzTail = stackalloc[CString]( sizeof[CString] )
     do {
       handleError( db, API.sqlite3_prepare_v2(db.cast[SQLitePtr],zSql,-1,stmt,pzTail) )
-      val s = (!stmt).cast[SQLitePreparedStatement]
+      val s = (!stmt).cast[SQLiteStmt]
       handleError(db, s.execute())
       s.close()
       zSql = !pzTail

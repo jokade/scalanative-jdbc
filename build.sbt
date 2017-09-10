@@ -20,6 +20,7 @@ lazy val commonSettings = Seq(
 lazy val nativeSettings = Seq(
   nativeCompileOptions ++= Seq(),
   nativeLinkingOptions ++= Seq("-lsqlite3")
+  //nativeLinkStubs := true
 )
 
 lazy val loggingSettings = Seq(
